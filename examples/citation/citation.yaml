@@ -1,0 +1,26 @@
+##
+## CITATION INFORMATION
+##
+
+#This assumes that every transition probability is the same
+#Could also make a more complicated version
+
+name: citation 
+
+# Number of possible categories of words
+N: 5
+
+
+# Used to parameterize simulations
+sim:
+    # Random number seed
+    seed: 127
+    # Number of simulations to run
+    nruns: 100
+    # Number of time steps in the simulation
+    Tmax: 25
+    # Transition Probability
+    p: 0.1 
+    # Probability of observing the correct label
+    q: 0.8
+    #q: 0.0
