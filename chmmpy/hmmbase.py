@@ -618,3 +618,7 @@ class HMMBase(object):
             results.M.pprint()
             results.M.display()
         results.M.write(filename)
+
+    #Used in learning
+    def constrained_generate_from_observation(self, obs, num = 1):
+        pass
