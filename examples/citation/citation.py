@@ -171,13 +171,14 @@ class Citation(HMMBase):
                 
                 
                 
-    def generate_hidden_from_observation(self, *, observations=None, seed=None):
+    def generate_hidden_from_observation(self, *, observations=None, seed=None, num_hidden = 1):
         """
         Generates feasible sequences of hidden states based on the observations.
 
         Parameters:
         - observations: A list of observations. If not provided, self.O is used.
         - seed: An optional random seed for reproducibility.
+        - num_hidden: The number of hidden states for each observation we wish to generate.
 
         Returns:
         - An array of hidden variables (shape: (num_sequences, sequence_length)).
@@ -197,24 +198,26 @@ class Citation(HMMBase):
             observations = self.O
             
         # Initialize the hidden states array
-        hidden_states = np.zeros((len(observations), max(len(obs) for obs in observations)), dtype=int)
+        # TODO: This doesn't work rn if the observations are of different lengths
+        hidden_states = np.zeros((len(observations), num_hidden, max(len(obs) for obs in observations)), dtype=int)
 
         for i, single_observation in enumerate(observations):
-            while True:
-                # Calculate initial probabilities for the first hidden state
-                initial_probs = [start_probs[h] * emission_probs[h][single_observation[0]] for h in range(num_hidden_states)]
-                initial_probs = normalize_array(initial_probs)
-                hidden_states[i][0] = np.random.choice(range(num_hidden_states), p=initial_probs)
+            for j in range(num_hidden):
+                while True:
+                    # Calculate initial probabilities for the first hidden state
+                    initial_probs = [start_probs[h] * emission_probs[h][single_observation[0]] for h in range(num_hidden_states)]
+                    initial_probs = normalize_array(initial_probs)
+                    hidden_states[i][j][0] = np.random.choice(range(num_hidden_states), p=initial_probs)
 
-                # Generate the remaining hidden states
-                for t in range(1, len(single_observation)):
-                    transition_probs = [trans_mat[hidden_states[i][t - 1]][h] * emission_probs[h][single_observation[t]] for h in range(num_hidden_states)]
-                    transition_probs = normalize_array(transition_probs)
-                    hidden_states[i][t] = np.random.choice(range(num_hidden_states), p=transition_probs)
+                    # Generate the remaining hidden states
+                    for t in range(1, len(single_observation)):
+                        transition_probs = [trans_mat[hidden_states[i][j][t - 1]][h] * emission_probs[h][single_observation[t]] for h in range(num_hidden_states)]
+                        transition_probs = normalize_array(transition_probs)
+                        hidden_states[i][j][t] = np.random.choice(range(num_hidden_states), p=transition_probs)
 
-                # Check if the generated sequence is valid
-                if self.oracle(hidden_states[i]):
-                    break
+                    # Check if the generated sequence is valid
+                    if self.oracle(hidden_states[i][j]):
+                        break
 
         return np.array(hidden_states, dtype= int)
 
@@ -253,7 +256,7 @@ class Citation(HMMBase):
         # Perturb and normalize emission probabilities
         self.emission_probs = np.array([perturb_and_normalize(row) for row in self.emission_probs])
             
-    def learn(self, observations, *, num_random=1, seed=None, learn_param=-2/3, convergence_factor = 1E-6):
+    def learn(self, observations, *, num_hidden=1, seed=None, learn_param=-2/3, convergence_factor = 1E-6):
         """
         Learns the model parameters: start_probs, trans_mat, and emission_probs
         based on the observations.
@@ -261,7 +264,7 @@ class Citation(HMMBase):
 
         Parameters:
         - observations: Observations we do learning with
-        - num_random: The number of random states that are generated each step in the learning process
+        - num_hidden: The number of random states that are generated each step in the learning process
         - seed: An optional random seed for reproducibility
         - learn_param: A value in [-1,-1/2) more negative values mean that previously generated hidden states are weighted more heavily
         - convergence_factor: If the parameters change less than this in an iteration, the algorithm terminates
@@ -274,14 +277,28 @@ class Citation(HMMBase):
             random.seed(seed)
             
         # Initialize model parameters
-        start_probs = self.start_probs
-        trans_mat = self.trans_mat
-        emission_probs = self.emission_probs
+        # We use star to denote the fact that the parameters are not normalized
+        start_probs_star = self.start_probs
+        trans_mat_star = self.trans_mat
+        emission_probs_star = self.emission_probs
         num_hidden_states = self.data.N  # Number of possible hidden variables and observed variables
+        num_it = 0 #Could make this larger to give more confidence in the initial parameters
         
         #Update the parameters
         while True:
-            break
+            num_it += 1
+            alpha = pow(num_it,learn_param)
+            
+            #Reweight previous matrices
+            new_start_probs_star = start_probs*(1-alpha)
+            new_emission_probs_star = emission_probs*(1-alpha)
+            new_trans_mat_star = trans_mat*(1-alpha)
+            
+            self.generate_hidden_from_observation(observations=observations, seed=seed, num_hidden=num_hidden) 
+            
+            
+            
+             
 
 #
 # MAIN
@@ -291,9 +308,11 @@ seed = None
 
 model = Citation()
 model.load_process(filename="citation.yaml")
-model.perturb_parameters(2)
-print(model.start_probs)
-print(model.trans_mat)
-print(model.emission_probs)
+H = model.generate_hidden(num_hidden = 2, t_max=25)
+O = model.generate_observations_from_hidden(H, return_obs=True)
+Hp = model.generate_hidden_from_observation(observations=O, num_hidden=5)
+print(H)
+print(O)
+print(Hp)
 
 print("FINISHED")
