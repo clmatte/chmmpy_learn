@@ -1,3 +1,5 @@
+import numpy as np
+
 def state_similarity(s1, s2):
     assert len(s1) == len(s2), (
         "ERROR: Cannot compare similarities amongst sequences of hidden states of different lengths: %d vs %d"
@@ -20,6 +22,11 @@ def print_differences(s1, s2):
     if flag:
         print("", "None")
 
+def normalize_array(arr):
+    total = np.sum(arr)
+    if total == 0:
+        raise ValueError("The sum of the array elements is zero, cannot normalize.")
+    return arr / total
 
 def run_all(
     model,
