@@ -10,15 +10,6 @@ name: citation
 # Number of possible categories of words
 num_categories: 5
 # Transition Probability (e.g 1/this is the average amount of time spent in a hidden state)
-transition_prob: 0.2 
+transition_prob: 0.1
 # Probability of observing the incorrect label
-noise_prob: 0.2
-
-# Used to parameterize simulations
-sim:
-    # Random number seed
-    seed: 127
-    # Number of simulations to run
-    nruns: 100
-    # Number of time steps in the simulation
-    Tmax: 30
+noise_prob: 0.2 
